@@ -141,7 +141,7 @@ function handleProxyRequest(req, res) {
       const clientReq = client.request({
         hostname: parsedTarget.hostname,
         port: parsedTarget.port || (isHttps ? 443 : 80),
-        path: parsedTarget.path,
+        path: (parsedTarget.pathname || '/') + (parsedTarget.search || ''),
         method: targetMethod,
         headers: targetHeaders
       }, (clientRes) => {

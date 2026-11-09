@@ -81,7 +81,7 @@ Create, customize, test, and manage purpose-built autonomous agents:
 
 ### 5. Universal Model Discovery & API Support
 - **Self-Hosted Ollama / Cloudflare Tunnels**:
-  - Direct integration with local endpoints (e.g. `https://shape-utilization-seal-feature.trycloudflare.com/v1`).
+  - Direct integration with local endpoints (e.g. `https://dock-hide-jackson-simulations.trycloudflare.com/v1` or `https://dock-hide-jackson-simulations.trycloudflare.com/`).
   - Pre-configured for `agentic-uncensored-coder:latest`, `qwen2.5-coder:7b`, etc.
   - Zero-auth local execution with 100% Free / Local classification.
 - **Google AI Studio (Gemini 2.0 / Experimental)**:

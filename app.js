@@ -13,8 +13,8 @@
   const PROVIDER_PRESETS = {
     custom: {
       name: 'Custom / Cloudflare Tunnel (Ollama, vLLM)',
-      baseUrl: 'https://shape-utilization-seal-feature.trycloudflare.com/v1',
-      modelsUrl: 'https://shape-utilization-seal-feature.trycloudflare.com/v1/models',
+      baseUrl: 'https://dock-hide-jackson-simulations.trycloudflare.com/v1',
+      modelsUrl: 'https://dock-hide-jackson-simulations.trycloudflare.com/v1/models',
       authHeader: 'none',
       format: 'openai',
       supportsFreeTag: true
@@ -329,7 +329,7 @@
     providerKey: 'custom',
     provider: { ...PROVIDER_PRESETS.custom },
     apiKey: '',
-    baseUrl: 'https://shape-utilization-seal-feature.trycloudflare.com/v1',
+    baseUrl: 'https://dock-hide-jackson-simulations.trycloudflare.com/v1',
     customAuthHeader: 'none',
     useProxy: 'auto', // 'auto' | 'direct' | 'proxy'
 
@@ -635,74 +635,126 @@
 
     try {
       const preset = PROVIDER_PRESETS[state.providerKey] || PROVIDER_PRESETS.custom;
-      let targetUrl = (state.baseUrl || preset.baseUrl || '').replace(/\/+$/, '');
+      let targetUrl = (state.baseUrl || preset.baseUrl || '').trim().replace(/\/+$/, '');
 
-      let modelsEndpoint = '';
+      if (!targetUrl && state.providerKey !== 'gemini' && state.providerKey !== 'openrouter' && state.providerKey !== 'anthropic') {
+        throw new Error('Base URL cannot be empty. Please enter an API endpoint or tunnel URL.');
+      }
+
       const headers = { 'Accept': 'application/json' };
-
-      if (state.providerKey === 'gemini') {
-        modelsEndpoint = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(state.apiKey)}`;
-        if (state.apiKey) headers['x-goog-api-key'] = state.apiKey;
-      } else if (state.providerKey === 'openrouter') {
-        modelsEndpoint = 'https://openrouter.ai/api/v1/models';
-        if (state.apiKey) headers['Authorization'] = `Bearer ${state.apiKey}`;
-      } else if (state.providerKey === 'ollama') {
-        modelsEndpoint = `${targetUrl.replace(/\/v1$/, '')}/api/tags`;
-      } else if (state.providerKey === 'anthropic') {
-        modelsEndpoint = 'https://api.anthropic.com/v1/models';
-        if (state.apiKey) {
-          headers['x-api-key'] = state.apiKey;
+      if (state.apiKey && state.apiKey.trim()) {
+        if (state.providerKey === 'gemini') {
+          headers['x-goog-api-key'] = state.apiKey.trim();
+        } else if (state.providerKey === 'anthropic') {
+          headers['x-api-key'] = state.apiKey.trim();
           headers['anthropic-version'] = '2023-06-01';
           headers['anthropic-dangerous-direct-browser-access'] = 'true';
-        }
-      } else {
-        // OpenAI-compatible / Custom / Cloudflare Tunnel
-        modelsEndpoint = targetUrl.endsWith('/models') ? targetUrl : `${targetUrl}/models`;
-        if (state.apiKey && state.apiKey.trim()) {
+        } else {
           headers['Authorization'] = `Bearer ${state.apiKey.trim()}`;
         }
       }
 
-      let response;
-      let usedProxy = false;
-
-      const shouldTryProxy = state.useProxy === 'proxy' || 
-        (state.useProxy === 'auto' && (state.providerKey === 'anthropic' || window.location.protocol === 'file:'));
-
-      if (shouldTryProxy) {
-        try {
-          response = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              url: modelsEndpoint,
-              method: 'GET',
-              headers: headers
-            })
-          });
-          usedProxy = true;
-        } catch (e) {
-          console.warn('Proxy failed, trying direct browser fetch:', e);
+      // Build candidate endpoints in priority order
+      const candidates = [];
+      if (state.providerKey === 'gemini') {
+        candidates.push(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(state.apiKey || '')}`);
+      } else if (state.providerKey === 'openrouter') {
+        candidates.push('https://openrouter.ai/api/v1/models');
+      } else if (state.providerKey === 'anthropic') {
+        candidates.push('https://api.anthropic.com/v1/models');
+      } else {
+        // OpenAI-compatible / Custom / Cloudflare Tunnel / Ollama / Local
+        const cleanBase = targetUrl.replace(/\/models$/, '').replace(/\/chat\/completions$/, '');
+        if (cleanBase.endsWith('/v1')) {
+          candidates.push(`${cleanBase}/models`);
+          candidates.push(`${cleanBase.replace(/\/v1$/, '')}/api/tags`);
+          candidates.push(`${cleanBase.replace(/\/v1$/, '')}/models`);
+        } else {
+          // Check standard /v1/models first, then Ollama /api/tags, then bare /models
+          candidates.push(`${cleanBase}/v1/models`);
+          candidates.push(`${cleanBase}/api/tags`);
+          candidates.push(`${cleanBase}/models`);
+          candidates.push(`${cleanBase}/api/models`);
         }
       }
 
-      if (!response || !response.ok) {
-        response = await fetch(modelsEndpoint, { method: 'GET', headers: headers });
-      }
+      let parsedModels = [];
+      let successfulEndpoint = '';
+      let lastError = null;
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+      for (const endpointUrl of candidates) {
+        try {
+          let response;
+          const shouldTryProxy = state.useProxy === 'proxy' || 
+            (state.useProxy === 'auto' && (state.providerKey === 'anthropic' || window.location.protocol === 'file:' || endpointUrl.includes('cloudflare') || endpointUrl.includes('localhost') || endpointUrl.includes('127.0.0.1')));
 
-      const json = await response.json();
-      const parsedModels = parseModelCatalog(json, state.providerKey);
+          if (shouldTryProxy) {
+            try {
+              response = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  url: endpointUrl,
+                  method: 'GET',
+                  headers: headers
+                })
+              });
+            } catch (e) {
+              console.warn(`Proxy fetch failed for ${endpointUrl}, trying direct:`, e);
+            }
+          }
+
+          if (!response || !response.ok) {
+            try {
+              response = await fetch(endpointUrl, { method: 'GET', headers: headers });
+            } catch (e) {
+              lastError = e;
+              continue;
+            }
+          }
+
+          if (!response || !response.ok) {
+            lastError = new Error(`HTTP ${response ? response.status : 'No response'} on ${endpointUrl}`);
+            continue;
+          }
+
+          const rawText = await response.text();
+          let json;
+          try {
+            json = JSON.parse(rawText);
+          } catch (e) {
+            lastError = new Error(`Non-JSON response on ${endpointUrl}: ${rawText.slice(0, 80)}`);
+            continue;
+          }
+
+          const models = parseModelCatalog(json, state.providerKey);
+          if (models.length > 0) {
+            parsedModels = models;
+            successfulEndpoint = endpointUrl;
+            break;
+          }
+        } catch (candidateErr) {
+          lastError = candidateErr;
+        }
+      }
 
       if (parsedModels.length === 0) {
-        throw new Error('API returned 0 models or unsupported format.');
+        throw lastError || new Error(`Could not fetch models from ${targetUrl}. Tried: ${candidates.join(', ')}`);
+      }
+
+      // If /v1/models succeeded and state.baseUrl did not have /v1, normalize state.baseUrl to /v1
+      if (successfulEndpoint.endsWith('/v1/models') && !state.baseUrl.endsWith('/v1')) {
+        const cleanBase = targetUrl.replace(/\/models$/, '').replace(/\/chat\/completions$/, '');
+        state.baseUrl = cleanBase + '/v1';
+        saveConfig();
+        const quickBaseInput = document.getElementById('quick-base-url-input');
+        if (quickBaseInput) quickBaseInput.value = state.baseUrl;
+        const cfgBaseInput = document.getElementById('cfg-base-url');
+        if (cfgBaseInput) cfgBaseInput.value = state.baseUrl;
       }
 
       state.models = parsedModels;
-      const existing = state.models.find(m => m.id === state.activeModel.id);
+      const existing = state.models.find(m => m.id === state.activeModel?.id);
       state.activeModel = existing || state.models[0];
 
       saveModels();
@@ -716,7 +768,7 @@
       console.error('Model fetch error:', err);
       let errorMsg = err.message || 'Network error';
       if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
-        errorMsg += ' (Check tunnel status or URL).';
+        errorMsg += ' (Check tunnel status or endpoint URL).';
       }
       showToast(`Fetch Failed: ${errorMsg}`, 'error');
     } finally {
@@ -737,8 +789,26 @@
       providerKey === 'custom' || 
       providerKey === 'ollama';
 
-    // 1. Google Gemini models: { models: [...] }
-    if (json.models && Array.isArray(json.models)) {
+    // 1. Ollama /api/tags: { models: [...] } where models have digest, size or details without supportedGenerationMethods
+    if (json.models && Array.isArray(json.models) && json.models.some(m => m.digest || m.details || (m.size !== undefined && !m.supportedGenerationMethods))) {
+      json.models.forEach(item => {
+        const id = item.name || item.model;
+        if (!id) return;
+        const sizeGb = item.size ? ` (${(item.size / (1024 * 1024 * 1024)).toFixed(1)} GB)` : '';
+        const paramSize = item.details?.parameter_size ? ` - ${item.details.parameter_size}` : '';
+        list.push({
+          id: id,
+          name: id,
+          provider: isSelfHosted ? 'Self-Hosted (Ollama)' : 'Ollama',
+          isFree: true,
+          pricing: { prompt: 0, completion: 0, label: 'Free (Local)' },
+          contextLength: 32768,
+          description: `Self-hosted Ollama model${paramSize}${sizeGb}.`
+        });
+      });
+    }
+    // 2. Google Gemini models: { models: [...] }
+    else if (json.models && Array.isArray(json.models)) {
       json.models.forEach(item => {
         const id = item.name.replace(/^models\//, '');
         const methods = item.supportedGenerationMethods || [];
@@ -756,10 +826,11 @@
         });
       });
     }
-    // 2. OpenRouter / OpenAI / Ollama /v1/models standard structure: { data: [...] }
+    // 3. OpenRouter / OpenAI / Ollama /v1/models standard structure: { data: [...] }
     else if (json.data && Array.isArray(json.data)) {
       json.data.forEach(item => {
         const id = item.id;
+        if (!id) return;
         const name = item.name || item.id;
         let isFree = isSelfHosted;
         let pricingLabel = isSelfHosted ? 'Free (Local)' : 'Paid';
@@ -802,18 +873,19 @@
         });
       });
     }
-    // 3. Ollama /api/tags: { models: [...] }
-    else if (json.models && Array.isArray(json.models)) {
-      json.models.forEach(item => {
-        const id = item.name || item.model;
+    // 4. Raw array format: [{ id: "...", ... }]
+    else if (Array.isArray(json)) {
+      json.forEach(item => {
+        const id = typeof item === 'string' ? item : (item.id || item.name || item.model);
+        if (!id) return;
         list.push({
           id: id,
           name: id,
-          provider: 'Ollama (Local)',
-          isFree: true,
-          pricing: { prompt: 0, completion: 0, label: 'Free (Local)' },
+          provider: isSelfHosted ? 'Self-Hosted Tunnel' : providerKey,
+          isFree: isSelfHosted,
+          pricing: { prompt: 0, completion: 0, label: isSelfHosted ? 'Free (Local)' : 'Custom' },
           contextLength: 32768,
-          description: `Local Ollama model (${item.details?.parameter_size || 'local'}).`
+          description: `Model ${id} on endpoint.`
         });
       });
     }
@@ -1147,7 +1219,15 @@
     }
     // 3. OpenAI / Cloudflare Tunnel / Ollama / DeepSeek / Custom
     else {
-      endpoint = targetUrl.endsWith('/chat/completions') ? targetUrl : `${targetUrl}/chat/completions`;
+      let endpointUrl = targetUrl;
+      if (!endpointUrl.endsWith('/chat/completions')) {
+        if (endpointUrl.endsWith('/v1')) {
+          endpointUrl += '/chat/completions';
+        } else {
+          endpointUrl += '/v1/chat/completions';
+        }
+      }
+      endpoint = endpointUrl;
       
       // CRITICAL FIX: Only send Authorization header if apiKey is genuinely non-empty!
       if (state.apiKey && state.apiKey.trim()) {
@@ -2520,7 +2600,7 @@
       },
       { id: 'quick_tunnel', title: 'Reconnect to Cloudflare Tunnel (agentic-uncensored-coder)', shortcut: 'Self-Hosted', icon: 'terminal', action: async () => {
           state.providerKey = 'custom';
-          state.baseUrl = 'https://shape-utilization-seal-feature.trycloudflare.com/v1';
+          state.baseUrl = 'https://dock-hide-jackson-simulations.trycloudflare.com/v1';
           saveConfig();
           updateHeaderModelDisplay();
           updateQuickSetupCard();
