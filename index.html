@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Chat // Context & Model Engine</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Sidebar: Conversations -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="app-title-group">
+          <svg class="app-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+          <span class="app-title">LLM Chat</span>
+          <span class="app-version-tag">UTIL</span>
+        </div>
+        <button type="button" class="btn-icon-subtle" id="btn-collapse-sidebar" title="Collapse sidebar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="sidebar-actions">
+        <button type="button" class="btn-new-chat" id="btn-new-chat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New Session</span>
+        </button>
+      </div>
+
+      <div class="chat-history-container">
+        <div class="history-group-title">Conversations</div>
+        <ul class="chat-history-list" id="chat-history-list">
+          <!-- Populated dynamically -->
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <button type="button" class="btn-icon-subtle" id="btn-toggle-theme" title="Toggle theme">
+          <svg id="theme-icon-dark" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg id="theme-icon-light" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+
+        <button type="button" class="btn-icon-subtle" id="btn-export-chats" title="Export chats as JSON">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
+
+        <button type="button" class="btn-icon-subtle" id="btn-open-settings" title="API & App Settings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Center Workspace -->
+    <main class="main-workspace" id="main-workspace">
+      <!-- Drag & Drop File Overlay -->
+      <div class="file-drop-overlay" id="file-drop-overlay">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <span>Drop code or text files to attach to session context</span>
+      </div>
+      <!-- Top Navigation Bar -->
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button type="button" class="btn-toggle-sidebar" id="btn-toggle-sidebar" title="Toggle sidebar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+
+          <!-- Active Model Selector Pill -->
+          <button type="button" class="model-pill-trigger" id="btn-open-model-selector" title="Choose or filter models">
+            <span class="badge-tier free" id="header-tier-badge">Free</span>
+            <span class="model-pill-name" id="header-model-name">Loading models...</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <!-- Quick API Provider & Key Pill -->
+          <button type="button" class="api-pill-trigger" id="btn-header-api-key" title="Quick API & Key Setup">
+            <span class="status-dot-sm" id="header-key-dot"></span>
+            <span id="header-provider-label">Google AI Studio</span>
+          </button>
+        </div>
+
+        <div class="top-bar-center">
+          <!-- Context Tracker Meter -->
+          <div class="context-tracker" id="btn-open-context-drawer" title="Click to inspect context">
+            <span class="context-label">Context</span>
+            <div class="context-meter-track">
+              <div class="context-meter-fill" id="header-context-fill" style="width: 2%;"></div>
+            </div>
+            <span class="context-stats" id="header-context-stats">0 / 128k</span>
+          </div>
+        </div>
+
+        <div class="top-bar-right">
+          <!-- Agent & Persona Selector Pill (Zero Emojis - Pure SVG) -->
+          <button type="button" class="persona-pill-trigger" id="btn-open-persona-menu" title="Custom Agents & Roles Studio">
+            <span id="persona-icon" class="persona-icon-svg">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+              </svg>
+            </span>
+            <span id="persona-name">Coder</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <!-- Command Palette Trigger -->
+          <button type="button" class="btn-header-action" id="btn-open-command-palette" title="Command Palette (Ctrl+K)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Ctrl+K</span>
+          </button>
+
+          <!-- Split Workspace Toggle -->
+          <button type="button" class="btn-header-action" id="btn-toggle-workspace-drawer" title="Toggle Code Workspace & Artifacts Pane">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="12" y1="3" x2="12" y2="21"></line>
+            </svg>
+            <span>Workspace</span>
+          </button>
+
+          <button type="button" class="btn-header-action" id="btn-view-raw-context" title="Inspect raw JSON context sent to API">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span>Payload</span>
+          </button>
+
+          <button type="button" class="btn-header-action" id="btn-toggle-context-drawer" title="Toggle Context Inspector">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="15" y1="3" x2="15" y2="21"></line>
+            </svg>
+            <span>Context</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Message History Scroll Area -->
+      <div class="chat-scroll-area" id="chat-scroll-area">
+        <!-- Empty State View -->
+        <div class="chat-empty-state" id="chat-empty-state">
+          <div class="empty-state-card">
+            <h2 class="empty-title">Utilitarian LLM Workspace</h2>
+            <p class="empty-desc">
+              Connect any provider or paste an experimental key (Google AI Studio, OpenRouter, DeepSeek, Anthropic, or Custom).
+              Dynamically browse models filtered by <strong>Free</strong> vs <strong>Paid</strong>, manage persistent context snippets, 
+              and inspect token limits in real-time.
+            </p>
+
+            <!-- Quick API & Key Setup Box -->
+            <div class="api-quick-setup-card">
+              <div class="api-card-header">
+                <div class="api-card-title">
+                  <span class="status-dot" id="quick-api-dot"></span>
+                  <span>API Provider & Endpoint Setup</span>
+                </div>
+                <span class="badge-tier" id="quick-api-status-badge">Endpoint Ready</span>
+              </div>
+              <div class="api-card-grid-3">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label">Provider</label>
+                  <select class="select-input" id="quick-provider-select">
+                    <option value="custom">Custom / Self-Hosted (Cloudflare Tunnel, vLLM, Ollama)</option>
+                    <option value="gemini">Google AI Studio (Gemini 2.0 / Experimental - Free Tier)</option>
+                    <option value="openrouter">OpenRouter (Free Tier & Experimental Models)</option>
+                    <option value="deepseek">DeepSeek Direct (V3 & R1 Reasoning)</option>
+                    <option value="xai">xAI Grok (Beta / Experimental)</option>
+                    <option value="cerebras">Cerebras Fast (Llama 3.1 / 3.3 Free)</option>
+                    <option value="openai">OpenAI (GPT-4o / o1 / o3)</option>
+                    <option value="anthropic">Anthropic Claude (3.5 Sonnet)</option>
+                    <option value="groq">Groq Cloud (Free Llama 3.3)</option>
+                    <option value="ollama">Ollama Local (http://localhost:11434)</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;" id="quick-base-url-group">
+                  <label class="form-label">Base URL (e.g. Tunnel or Localhost)</label>
+                  <input type="text" class="form-input" id="quick-base-url-input" placeholder="https://shape-utilization-seal-feature.trycloudflare.com/v1">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label">API Key (Leave empty if Ollama)</label>
+                  <div style="display: flex; gap: 6px;">
+                    <input type="password" class="form-input" id="quick-api-key-input" placeholder="Optional for self-hosted">
+                    <button type="button" class="btn-send-message" id="btn-quick-save-key" style="white-space: nowrap; padding: 6px 12px;">Connect</button>
+                  </div>
+                </div>
+              </div>
+              <div class="quick-model-row">
+                <span class="form-hint">Active Model: <strong id="quick-current-model-label">agentic-uncensored-coder:latest</strong> (<span id="quick-current-tier-label">Free</span>)</span>
+                <button type="button" class="btn-tool" id="btn-quick-open-models" style="font-size: 11px;">Change / Filter Models</button>
+              </div>
+            </div>
+
+            <div class="quick-prompts-grid">
+              <button type="button" class="quick-prompt-btn" data-prompt="Analyze this code snippet for memory leaks, edge cases, and performance bottlenecks:">
+                <strong>Code Audit</strong><br>Analyze edge cases & performance
+              </button>
+              <button type="button" class="quick-prompt-btn" data-prompt="Draft a clean, concise technical specification for a resilient REST/SSE service:">
+                <strong>Tech Spec</strong><br>Architecture & data contract
+              </button>
+              <button type="button" class="quick-prompt-btn" data-prompt="Summarize the key architectural tradeoffs between event-driven vs polling designs:">
+                <strong>Tradeoff Analysis</strong><br>Compare systems objectively
+              </button>
+              <button type="button" class="quick-prompt-btn" data-prompt="Explain this concept with zero jargon, straightforward prose, and a clear example:">
+                <strong>Zero Jargon</strong><br>Explain clearly and concisely
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rendered Messages List -->
+        <div class="messages-list" id="messages-list">
+          <!-- Dynamically inserted messages -->
+        </div>
+      </div>
+
+      <!-- Chat Input Area -->
+      <footer class="chat-input-wrapper">
+        <!-- Quick Slash Command Shortcuts Bar (Strictly Pure SVG Icons - Zero Emojis) -->
+        <div class="slash-commands-bar" id="slash-commands-bar">
+          <button type="button" class="btn-slash-chip" data-template="/build " title="Autonomous multi-file app scaffolding">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+            <span>/build</span>
+          </button>
+          <button type="button" class="btn-slash-chip" data-template="/code " title="Implement code solution">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            <span>/code</span>
+          </button>
+          <button type="button" class="btn-slash-chip" data-template="/plan " title="Create comprehensive architecture plan">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            <span>/plan</span>
+          </button>
+          <button type="button" class="btn-slash-chip" data-template="/fix " title="Debug & fix error">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="8" height="14" x="8" y="5" rx="4"></rect><path d="m19 7-3 2"></path><path d="m5 7 3 2"></path><path d="m19 19-3-2"></path><path d="m5 19 3-2"></path><path d="M20 13h-4"></path><path d="M4 13h4"></path></svg>
+            <span>/fix</span>
+          </button>
+          <button type="button" class="btn-slash-chip" data-template="/test " title="Write test suite">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5h0c-1.4 0-2.5-1.1-2.5-2.5V2"></path><path d="M8.5 2h7"></path><path d="M14.5 16h-5"></path></svg>
+            <span>/test</span>
+          </button>
+          <button type="button" class="btn-slash-chip" data-template="/review " title="Rigorous code audit">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span>/review</span>
+          </button>
+          <button type="button" class="btn-slash-chip" data-template="/diff " title="Unified patch diff">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><line x1="12" y1="5" x2="12" y2="19"></line></svg>
+            <span>/diff</span>
+          </button>
+          <button type="button" class="btn-slash-chip" data-template="/explain " title="Architectural deep dive">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>/explain</span>
+          </button>
+        </div>
+
+        <div class="input-container-inner">
+          <!-- Active Context Chips Bar (when documents attached) -->
+          <div class="attached-context-bar" id="attached-context-bar" style="display: none;">
+            <!-- Document chips inserted here -->
+          </div>
+
+          <!-- Attached Code Files Bar (drag & drop / uploaded files) -->
+          <div class="attached-files-bar" id="attached-files-bar" style="display: none;">
+            <!-- Uploaded file chips inserted here -->
+          </div>
+
+          <textarea 
+            class="chat-textarea" 
+            id="chat-textarea" 
+            placeholder="Type your instruction or code question... (Ctrl+Enter to send, Shift+Enter for newline, / for commands)"
+            rows="1"
+          ></textarea>
+
+          <div class="input-toolbar">
+            <div class="toolbar-left">
+              <button type="button" class="btn-tool" id="btn-attach-code-file" title="Attach local code file to context">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                </svg>
+                <span>+ File</span>
+              </button>
+              <input type="file" id="file-upload-input" multiple style="display: none;">
+
+              <button type="button" class="btn-tool" id="btn-add-context-snippet" title="Attach persistent reference document or note">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+                <span>+ Context Doc</span>
+              </button>
+
+              <button type="button" class="btn-tool" id="btn-clear-chat" title="Clear current session">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span>Clear</span>
+              </button>
+            </div>
+
+            <div class="toolbar-right">
+              <span class="input-token-counter" id="input-token-counter">~0 tokens</span>
+
+              <button type="button" class="btn-stop-generation" id="btn-stop-stream">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12"></rect>
+                </svg>
+                <span>Stop</span>
+              </button>
+
+              <button type="button" class="btn-send-message" id="btn-send-message">
+                <span>Send</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <!-- Right Drawer: Context Inspector & Knowledge Base -->
+    <aside class="context-drawer" id="context-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+          <span>Context Inspector</span>
+        </div>
+        <button type="button" class="btn-icon-subtle" id="btn-close-context-drawer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="drawer-content">
+        <!-- Section: Context Breakdown Card -->
+        <div class="context-breakdown-card">
+          <div class="breakdown-row">
+            <span>Model Window:</span>
+            <span class="breakdown-val" id="drawer-max-tokens">128,000</span>
+          </div>
+          <div class="breakdown-row">
+            <span>System Prompt:</span>
+            <span class="breakdown-val" id="drawer-system-tokens">~0</span>
+          </div>
+          <div class="breakdown-row">
+            <span>Attached Docs:</span>
+            <span class="breakdown-val" id="drawer-docs-tokens">~0</span>
+          </div>
+          <div class="breakdown-row">
+            <span>Active Messages:</span>
+            <span class="breakdown-val" id="drawer-history-tokens">~0</span>
+          </div>
+          <hr class="divider" style="margin: 8px 0;" />
+          <div class="breakdown-row" style="font-weight: 600;">
+            <span>Total Used / Fill:</span>
+            <span class="breakdown-val" id="drawer-total-usage">0 (0%)</span>
+          </div>
+        </div>
+
+        <!-- Section: System Instructions -->
+        <div class="context-section">
+          <div class="section-label-row">
+            <span class="section-label">System Instructions</span>
+            <span class="section-pill" id="system-token-pill">~0 tokens</span>
+          </div>
+          <textarea 
+            class="textarea-system-prompt" 
+            id="system-prompt-input" 
+            placeholder="Define custom persona, constraints, or response formatting..."
+          ></textarea>
+          <div class="preset-buttons-row">
+            <button type="button" class="btn-preset-chip" data-preset="concise">Concise Utilitarian</button>
+            <button type="button" class="btn-preset-chip" data-preset="engineer">Senior Engineer</button>
+            <button type="button" class="btn-preset-chip" data-preset="reviewer">Code Auditor</button>
+            <button type="button" class="btn-preset-chip" data-preset="clean">Clear</button>
+          </div>
+        </div>
+
+        <!-- Section: Context Documents -->
+        <div class="context-section">
+          <div class="section-label-row">
+            <span class="section-label">Attached Documents</span>
+            <button type="button" class="btn-preset-chip" id="btn-drawer-add-doc">+ Add Doc</button>
+          </div>
+          <div class="docs-list" id="drawer-docs-list">
+            <!-- Rendered context documents -->
+          </div>
+        </div>
+
+        <!-- Section: Context Retention Strategy -->
+        <div class="context-section">
+          <div class="section-label-row">
+            <span class="section-label">Context Retention Mode</span>
+          </div>
+          <select class="select-input" id="context-strategy-select">
+            <option value="all">Full History (Send all active messages)</option>
+            <option value="sliding-10">Sliding Window: Last 10 Messages</option>
+            <option value="sliding-6">Sliding Window: Last 6 Messages</option>
+            <option value="sliding-4">Sliding Window: Last 4 Messages</option>
+            <option value="budget-16k">Token Budget: Cap at 16,000 tokens</option>
+            <option value="budget-32k">Token Budget: Cap at 32,000 tokens</option>
+          </select>
+          <span class="form-hint">Tip: You can also mute individual long responses from context directly in the chat stream!</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Code Workspace Drawer (Split View Artifacts & Code Viewer) -->
+    <aside class="code-workspace-drawer closed" id="code-workspace-drawer">
+      <div class="workspace-header">
+        <div class="workspace-title-group">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          <span>Code Workspace</span>
+        </div>
+        <button type="button" class="btn-icon-subtle" id="btn-close-workspace-drawer" title="Close Workspace">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Real Workspace Project File Tree View -->
+      <div class="workspace-tree-section" id="workspace-tree-section">
+        <div class="workspace-tree-header">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            <span>Project Files (workspace/)</span>
+          </div>
+          <div style="display: flex; gap: 4px;">
+            <button type="button" class="btn-icon-subtle" id="btn-ws-refresh-tree" title="Refresh files on disk">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            </button>
+            <button type="button" class="btn-icon-subtle" id="btn-ws-new-file" title="Create new file on disk">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          </div>
+        </div>
+        <div class="workspace-tree-content" id="workspace-tree-content">
+          <!-- Populated dynamically via /api/workspace/tree -->
+        </div>
+      </div>
+
+      <div class="workspace-tabs-bar" id="workspace-tabs-bar">
+        <div class="workspace-tab active" data-tab-id="scratchpad.js">
+          <span class="tab-title">scratchpad.js</span>
+        </div>
+      </div>
+
+      <div class="workspace-toolbar">
+        <div class="workspace-file-info">
+          <span id="ws-current-filename">scratchpad.js</span>
+          <span>·</span>
+          <span id="ws-current-meta">0 lines</span>
+        </div>
+        <div style="display: flex; gap: 4px;">
+          <button type="button" class="btn-tool" id="btn-ws-toggle-wrap">Wrap</button>
+          <button type="button" class="btn-tool" id="btn-ws-toggle-preview" style="display: none;">Live Preview</button>
+          <button type="button" class="btn-tool" id="btn-ws-copy">Copy</button>
+          <button type="button" class="btn-tool" id="btn-ws-download">Download</button>
+        </div>
+      </div>
+
+      <div class="workspace-editor-view">
+        <pre class="workspace-code-pre" id="workspace-code-pre">// Generated and inspected code files appear here...</pre>
+        <iframe class="workspace-preview-frame" id="workspace-preview-frame" style="display: none;" sandbox="allow-scripts allow-modals"></iframe>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Modal: Model Selector with Free / Paid Filter -->
+  <div class="modal-backdrop" id="modal-model-selector">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">Select Model</div>
+        <button type="button" class="btn-icon-subtle" id="btn-close-model-modal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Direct Quick-Inject Experimental Model Bar -->
+        <div class="quick-model-direct-input-bar">
+          <input type="text" id="direct-model-input" placeholder="Type or paste ANY experimental model ID (e.g. gemini-2.0-flash-exp)...">
+          <select class="select-input-sm" id="direct-model-tier">
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
+          </select>
+          <button type="button" class="btn-send-message" id="btn-apply-direct-model" style="font-size: 11px; padding: 4px 10px;">+ Use Model</button>
+        </div>
+
+        <!-- Live Search -->
+        <div class="model-search-bar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="model-search-input" placeholder="Search by name, creator (Meta, DeepSeek, Google, OpenAI), or model ID...">
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="model-filters-row">
+          <!-- Free / Paid Filter -->
+          <div class="segmented-control" id="model-tier-filter">
+            <button type="button" class="segmented-btn active" data-tier="all">All Models (<span id="count-all">0</span>)</button>
+            <button type="button" class="segmented-btn" data-tier="free">Free Only (<span id="count-free">0</span>)</button>
+            <button type="button" class="segmented-btn" data-tier="paid">Paid Only (<span id="count-paid">0</span>)</button>
+          </div>
+
+          <!-- Dynamic Fetch Button -->
+          <button type="button" class="btn-tool" id="btn-fetch-models">
+            <svg id="fetch-spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span id="fetch-status-text">Fetch Models</span>
+          </button>
+        </div>
+
+        <!-- Models List -->
+        <div class="model-list-container" id="model-list-container">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-tool" id="btn-add-custom-model-trigger">+ Add Custom Model</button>
+        <button type="button" class="btn-send-message" id="btn-confirm-model-selection">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: API Provider & Settings -->
+  <div class="modal-backdrop" id="modal-settings">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">Settings & API Configuration</div>
+        <button type="button" class="btn-icon-subtle" id="btn-close-settings-modal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="settings-tabs">
+          <button type="button" class="settings-tab-btn active" data-tab="tab-provider">API Provider</button>
+          <button type="button" class="settings-tab-btn" data-tab="tab-params">Parameters</button>
+          <button type="button" class="settings-tab-btn" data-tab="tab-proxy">CORS Proxy</button>
+        </div>
+
+        <!-- Tab 1: API Provider -->
+        <div class="settings-tab-pane" id="tab-provider">
+          <div class="form-group">
+            <label class="form-label">Provider Preset</label>
+            <select class="select-input" id="provider-preset-select">
+              <option value="gemini">Google AI Studio (Gemini 2.0 / Experimental - Free Tier)</option>
+              <option value="openrouter">OpenRouter (Free Tier & Experimental Models)</option>
+              <option value="deepseek">DeepSeek Direct (V3 & R1 Reasoning)</option>
+              <option value="xai">xAI Grok (Beta / Experimental)</option>
+              <option value="cerebras">Cerebras Fast (Llama 3.1 / 3.3 Free)</option>
+              <option value="openai">OpenAI (api.openai.com)</option>
+              <option value="anthropic">Anthropic Claude (api.anthropic.com)</option>
+              <option value="groq">Groq Cloud (api.groq.com/openai/v1)</option>
+              <option value="ollama">Ollama Local (http://localhost:11434 - 100% Free)</option>
+              <option value="custom">Custom Endpoint / Self-Hosted</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Base URL</label>
+            <input type="text" class="form-input" id="cfg-base-url" placeholder="https://openrouter.ai/api/v1">
+            <span class="form-hint">Endpoint base for models and completions</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">API Key</label>
+            <input type="password" class="form-input" id="cfg-api-key" placeholder="Enter provider API key (stored locally)">
+            <span class="form-hint">Stored securely in your browser's localStorage. Never sent to third parties.</span>
+          </div>
+
+          <div class="form-group" id="group-custom-headers" style="display: none;">
+            <label class="form-label">Custom Authorization Header Name</label>
+            <input type="text" class="form-input" id="cfg-auth-header" placeholder="Authorization (or x-api-key)">
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button type="button" class="btn-tool" id="btn-test-connection">Test Connection</button>
+            <button type="button" class="btn-tool" id="btn-fetch-models-settings">Fetch Models Now</button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Parameters -->
+        <div class="settings-tab-pane" id="tab-params" style="display: none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Temperature: <span id="val-temp">0.7</span></label>
+              <input type="range" min="0" max="2" step="0.05" value="0.7" id="cfg-temperature" style="width: 100%;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Top P: <span id="val-topp">0.9</span></label>
+              <input type="range" min="0" max="1" step="0.05" value="0.9" id="cfg-topp" style="width: 100%;">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Max Output Tokens</label>
+            <input type="number" class="form-input" id="cfg-max-tokens" value="4096" min="64" max="32768" step="64">
+            <span class="form-hint">Upper bound on tokens generated per response</span>
+          </div>
+        </div>
+
+        <!-- Tab 3: CORS Proxy -->
+        <div class="settings-tab-pane" id="tab-proxy" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">Route requests through local proxy server</label>
+            <select class="select-input" id="cfg-use-proxy">
+              <option value="auto">Auto (Direct browser first, fallback to proxy)</option>
+              <option value="direct">Direct Browser Fetch (Requires provider CORS headers)</option>
+              <option value="proxy">Always use Local Proxy (http://localhost:3000/api/proxy)</option>
+            </select>
+            <span class="form-hint" style="margin-top: 6px; display: block;">
+              When testing providers with strict browser CORS policies (like Anthropic or private local LLM servers), 
+              the built-in Node server proxy transparently forwards the request and streams SSE tokens.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-send-message" id="btn-save-settings">Save & Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add Context Document Snippet -->
+  <div class="modal-backdrop" id="modal-context-doc">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">Attach Context Document / Snippet</div>
+        <button type="button" class="btn-icon-subtle" id="btn-close-doc-modal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Document Title</label>
+          <input type="text" class="form-input" id="doc-title-input" placeholder="e.g. API Contract, Database Schema, Project Requirements">
+        </div>
+
+        <div class="form-group">
+          <div class="section-label-row">
+            <label class="form-label">Document Content (Markdown, Code, or Text)</label>
+            <span class="section-pill" id="doc-tokens-estimate">~0 tokens</span>
+          </div>
+          <textarea 
+            class="textarea-system-prompt" 
+            id="doc-content-input" 
+            placeholder="Paste technical reference, rules, or background context to stay active across messages..."
+            style="min-height: 200px;"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-tool" id="btn-cancel-doc-modal">Cancel</button>
+        <button type="button" class="btn-send-message" id="btn-save-context-doc">Attach Document</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: View Raw Context JSON Payload -->
+  <div class="modal-backdrop" id="modal-raw-context">
+    <div class="modal-dialog" style="max-width: 780px;">
+      <div class="modal-header">
+        <div class="modal-title">Raw Context Payload Inspector</div>
+        <button type="button" class="btn-icon-subtle" id="btn-close-raw-context-modal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+          This is the exact JSON body and message array that will be sent to the API on your next message, factoring in system prompt, attached context documents, and active message filters.
+        </p>
+        <pre class="raw-json-pre" id="raw-context-json-viewer"></pre>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-tool" id="btn-copy-raw-context">Copy JSON</button>
+        <button type="button" class="btn-send-message" id="btn-close-raw-modal-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add Custom Model Manually -->
+  <div class="modal-backdrop" id="modal-custom-model">
+    <div class="modal-dialog" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-title">Add Custom Model</div>
+        <button type="button" class="btn-icon-subtle" id="btn-close-custom-model-modal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Model Identifier (ID)</label>
+          <input type="text" class="form-input" id="custom-model-id" placeholder="e.g. mistralai/mistral-large-2411 or llama3:latest">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Name</label>
+          <input type="text" class="form-input" id="custom-model-name" placeholder="e.g. Mistral Large 2411">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Pricing Tier</label>
+            <select class="select-input" id="custom-model-tier">
+              <option value="free">Free</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Context Window (tokens)</label>
+            <input type="number" class="form-input" id="custom-model-context" value="128000" step="1000">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-tool" id="btn-cancel-custom-model">Cancel</button>
+        <button type="button" class="btn-send-message" id="btn-save-custom-model">Add Model</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Command Palette (Ctrl+K) -->
+  <div class="command-palette-backdrop" id="modal-command-palette">
+    <div class="command-palette-dialog">
+      <div class="command-palette-input-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="command-palette-input" id="command-palette-input" placeholder="Type a command or search actions... (Esc to dismiss)">
+        <span class="command-palette-shortcut">ESC</span>
+      </div>
+      <div class="command-palette-list" id="command-palette-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Custom Agent Studio & Roles Manager (Strictly Zero Emojis) -->
+  <div class="modal-backdrop" id="modal-agent-studio">
+    <div class="modal-dialog" style="max-width: 860px;">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          <span>Custom Agents Studio & Roles</span>
+        </div>
+        <button type="button" class="btn-icon-subtle" id="btn-close-agent-modal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 16px 20px;">
+        <div class="agent-studio-grid">
+          <!-- Left Column: Agent List & Actions -->
+          <div class="agent-studio-list">
+            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+              <button type="button" class="btn-send-message" id="btn-studio-create-agent" style="flex: 1; font-size: 11px; padding: 6px 8px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>New Agent</span>
+              </button>
+              <button type="button" class="btn-tool" id="btn-studio-import-agent" title="Import agent from JSON file">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              </button>
+              <input type="file" id="agent-import-file" accept=".json" style="display: none;">
+            </div>
+            <div id="studio-agent-items-container" style="display: flex; flex-direction: column; gap: 4px;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Right Column: Agent Configuration Editor -->
+          <div class="agent-studio-form">
+            <div class="form-row">
+              <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                <label class="form-label">Agent Name</label>
+                <input type="text" class="form-input" id="agent-input-name" placeholder="e.g. Full-Stack Web Architect">
+              </div>
+              <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label class="form-label">Role Badge</label>
+                <input type="text" class="form-input" id="agent-input-role" placeholder="e.g. Architect">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Icon (Pure SVG Glyph)</label>
+              <div class="icon-selector-grid" id="agent-icon-selector">
+                <!-- SVG Icon Choices -->
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Description</label>
+              <input type="text" class="form-input" id="agent-input-desc" placeholder="Summary of responsibilities and coding style...">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                <label class="form-label">Model Override</label>
+                <select class="select-input" id="agent-select-model">
+                  <option value="">Inherit Active Workspace Model</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label class="form-label">Temperature: <span id="agent-temp-val">0.7</span></label>
+                <input type="range" min="0" max="2" step="0.05" value="0.7" id="agent-input-temp" style="width: 100%;">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Enabled Capabilities & Tools</label>
+              <div class="tools-checkbox-grid">
+                <label class="tool-checkbox-card">
+                  <input type="checkbox" id="agent-tool-fs-read" checked>
+                  <span>File Read (Workspace inspection)</span>
+                </label>
+                <label class="tool-checkbox-card">
+                  <input type="checkbox" id="agent-tool-fs-write" checked>
+                  <span>File Write (Create files on disk)</span>
+                </label>
+                <label class="tool-checkbox-card">
+                  <input type="checkbox" id="agent-tool-fs-edit" checked>
+                  <span>File Patch (Targeted search & replace)</span>
+                </label>
+                <label class="tool-checkbox-card">
+                  <input type="checkbox" id="agent-tool-fs-exec" checked>
+                  <span>Shell Command Execution</span>
+                </label>
+                <label class="tool-checkbox-card">
+                  <input type="checkbox" id="agent-tool-plan" checked>
+                  <span>Autonomous Plan Roadmap</span>
+                </label>
+                <label class="tool-checkbox-card">
+                  <input type="checkbox" id="agent-tool-repomap" checked>
+                  <span>Compact Codebase Tree Map</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">System Instructions & Directives</label>
+              <textarea class="textarea-system-prompt" id="agent-input-prompt" style="min-height: 140px;" placeholder="Define exact instructions, architectural guidelines, and output constraints..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
+              <button type="button" class="btn-tool" id="btn-studio-export-agent" title="Export this agent configuration as JSON">Export JSON</button>
+              <button type="button" class="btn-tool" id="btn-studio-delete-agent" style="color: var(--status-err);" title="Delete custom agent">Delete</button>
+              <button type="button" class="btn-tool" id="btn-studio-save-agent">Save Agent</button>
+              <button type="button" class="btn-send-message" id="btn-studio-activate-agent">Activate Agent</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Stack -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="markdown.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
