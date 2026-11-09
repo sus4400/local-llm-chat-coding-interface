@@ -47,8 +47,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const parsedUrl = url.parse(req.url, true);
-  const pathname = parsedUrl.pathname;
+  const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const pathname = reqUrl.pathname;
 
   // 1. Streaming Proxy Endpoint: POST /api/proxy
   if (pathname === '/api/proxy' && req.method === 'POST') {
@@ -65,7 +65,8 @@ const server = http.createServer((req, res) => {
 
   // 3. Workspace API Endpoints
   if (pathname.startsWith('/api/workspace/')) {
-    handleWorkspaceApi(req, res, pathname, parsedUrl.query);
+    const queryObj = Object.fromEntries(reqUrl.searchParams.entries());
+    handleWorkspaceApi(req, res, pathname, queryObj);
     return;
   }
 
@@ -124,7 +125,7 @@ function handleProxyRequest(req, res) {
         return;
       }
 
-      const parsedTarget = url.parse(targetUrl);
+      const parsedTarget = new URL(targetUrl);
       const isHttps = parsedTarget.protocol === 'https:';
       const client = isHttps ? https : http;
 
@@ -308,13 +309,14 @@ function handleWorkspaceApi(req, res, pathname, query) {
   // 6. POST /api/workspace/exec (Run shell command in workspace)
   if (pathname === '/api/workspace/exec' && req.method === 'POST') {
     readBody((err, body) => {
-      if (err || !body.command) return sendJson(400, { success: false, error: 'command is required' });
+      const commandToRun = body && (body.command || body.cmd);
+      if (err || !commandToRun) return sendJson(400, { success: false, error: 'command is required' });
       const startTime = Date.now();
-      exec(body.command, { cwd: WORKSPACE_DIR, timeout: 30000, maxBuffer: 1024 * 1024 }, (execErr, stdout, stderr) => {
+      exec(commandToRun, { cwd: WORKSPACE_DIR, timeout: 30000, maxBuffer: 1024 * 1024 }, (execErr, stdout, stderr) => {
         const durationMs = Date.now() - startTime;
         sendJson(200, {
           success: !execErr,
-          command: body.command,
+          command: commandToRun,
           stdout: stdout || '',
           stderr: stderr || (execErr ? execErr.message : ''),
           exitCode: execErr ? (execErr.code || 1) : 0,
@@ -329,7 +331,8 @@ function handleWorkspaceApi(req, res, pathname, query) {
   if (pathname === '/api/workspace/repoprompt' && req.method === 'GET') {
     try {
       const summary = generateRepoSummary(WORKSPACE_DIR, '');
-      sendJson(200, { success: true, summary });
+      const filesCount = (summary.match(/\n- /g) || []).length;
+      sendJson(200, { success: true, summary, repoprompt: summary, totalFiles: filesCount });
     } catch (e) {
       sendJson(500, { success: false, error: e.message });
     }
